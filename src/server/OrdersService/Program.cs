@@ -13,7 +13,7 @@ namespace OrdersService
     {
         private string _executionService;
         private IServiceConfiguration _config;
-        private IWampRealmProxy _executionRealmProxy;
+        private IWampRealmProxy _realmProxy;
         private IBroker _broker;
 
         public static void Main(string[] args)
@@ -29,15 +29,18 @@ namespace OrdersService
 
             await ConnectToBroker();
 
-            var serviceHost = new OrdersService(_broker, "orders", _executionRealmProxy, _executionService);
+            var serviceHost = new OrdersService(_broker, "orders", _realmProxy, _executionService);
 
             serviceHost.Initialize();
         }
 
+        // Note: This is a overly simplified version of the broker connection code. The other services
+        // use a fuller version which reacts to broker/eventstore disconnections and reconnections
         private async Task ConnectToBroker()
         {
             Console.WriteLine("Initializing connection...");
 
+            // 1. Find a broker that is connected
             IConnected<IBroker> connectedBroker;
             using (var connectionFactory = BrokerConnectionFactory.Create(_config.Broker))
             {
@@ -51,6 +54,7 @@ namespace OrdersService
 
             _broker = connectedBroker.Value;
 
+            // 2. Find an instance of an execution service
             _executionService = await _broker.SubscribeToTopic<HeartbeatDto>("status")
                 .Where(x => x.Type == "execution")
                 .Select(x => x.Instance)
@@ -58,6 +62,7 @@ namespace OrdersService
 
             Console.WriteLine($"Found execution service {_executionService}");
 
+            // 3. Create a proxy to publish messages to
             var factory = new DefaultWampChannelFactory();
             var channel = factory.CreateJsonChannel($"ws://{_config.Broker.Host}:{_config.Broker.Port}/ws", _config.Broker.Realm);
 
@@ -65,7 +70,7 @@ namespace OrdersService
 
             Console.WriteLine($"Opened channel to {_executionService}");
 
-            _executionRealmProxy = channel.RealmProxy;
+            _realmProxy = channel.RealmProxy;
         }
     }
 }

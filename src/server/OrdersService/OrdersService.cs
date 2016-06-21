@@ -26,6 +26,7 @@ namespace OrdersService
 
         public void Initialize()
         {
+            // Register a handler for calls to placeOrder
             RegisterCall("placeOrder", PlaceOrder);
             StartHeartBeat();
         }
