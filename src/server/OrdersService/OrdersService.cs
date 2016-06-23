@@ -29,6 +29,7 @@ namespace OrdersService
             // Register a handler for calls to placeOrder
             RegisterCall("placeOrder", PlaceOrder);
             StartHeartBeat();
+            Console.WriteLine($"Service {InstanceID} up and running");
         }
 
         private Task PlaceOrder(IRequestContext ctx, IMessage msg)
